@@ -46,7 +46,7 @@ export default function Sidebar({ currentPath }) {
         <div className="bg-gray-100 w-64 min-h-screen py-8 px-4 flex flex-col">
             <div className="mb-8 flex gap-1 items-center justify-center">
                 <img src="/logo.svg" alt="Logo" height={35} width={35} />
-                <h2 className="text-xl font-semibold">AI Resume Screener</h2>
+                <h2 className="text-xl font-semibold">AI Resume Analyzer</h2>
             </div>
 
             <nav className="flex-1 space-y-1">
@@ -63,7 +63,7 @@ export default function Sidebar({ currentPath }) {
                                 end
                                 className={`group flex items-center space-x-3 p-3 rounded-md transition-all duration-200 ease-in-out ${
                                     isActive
-                                        ? 'bg-gray-900 text-white font-semibold'
+                                        ? 'bg-primary text-white font-semibold'
                                         : 'text-gray-600 hover:bg-gray-200 hover:text-black font-semibold'
                                 }`}
                             >
@@ -75,10 +75,10 @@ export default function Sidebar({ currentPath }) {
                 })}
             </nav>
 
-            <div className="mt-8 border-t border-gray-200 pt-4">
+            <div className="mt-8 border-t border-gray-200 pt-4 flex items-center justify-center">
                 <button
                     onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-md hover:bg-red-600 transition-all"
+                    className="flex items-center justify-center gap-2 py-2 w-[70%] text-sm font-semibold text-white bg-red-700 rounded-md hover:bg-red-600 transition-all"
                 >
                     <LogOut className="w-4 h-4" />
                     Logout
