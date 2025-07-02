@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, FileText, BarChart3, Sparkles, Bot, X } from 'lucide-react';
+import { Users, FileText, BarChart3, Sparkles, Bot, X, LayoutDashboard } from 'lucide-react';
 
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
@@ -86,8 +86,9 @@ const DashboardContent = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
         >
-            <motion.h1 className="text-4xl font-bold text-gray-800">
-                🚀 Welcome to Your AI Screening Dashboard
+            <motion.h1 className="text-4xl font-bold flex gap-2 items-center text-gray-800">
+                <img src="/resume.png" alt="Resume Icon" className='w-9' />
+                 Welcome to Your Resume Analyzing Dashboard
             </motion.h1>
 
             <div className="flex gap-5 justify-between">
@@ -118,10 +119,10 @@ const DashboardContent = () => {
 
             <div className="bg-gradient-to-r from-gray-100 to-white rounded-xl p-6 shadow-md space-y-4">
                 <h2 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5" /> Smart Career Assistant
+                    <Sparkles className="w-5 h-5" /> AI Resume Analyzer
                 </h2>
                 <ul className="list-disc list-inside space-y-2 text-gray-700">
-                    <li><strong>For Applicants:</strong> Use the <span className="font-medium text-blue-600">Job Apply</span> tool to access AI-enhanced Canva templates.</li>
+                    <li><strong>For Applicants:</strong> Use the Job Apply tool to access AI-enhanced Canva templates.</li>
                     <li><strong>For Recruiters:</strong> Upload resumes to get instant AI screening reports.</li>
                     <li><strong>Smart Tip:</strong> Higher match scores come from keyword-aligned resumes.</li>
                     <li><strong>Pro Insight:</strong> Cover letters can improve selection chances by 37%.</li>
