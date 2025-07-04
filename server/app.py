@@ -12,8 +12,7 @@ import requests
 config = dotenv_values(".env")
 DATABASE_URL = config["DATABASE_URL"]
 GEMINI_API_KEY = config["GEMINI_API_KEY"]
-
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+GEMINI_API_URL = config["GEMINI_API_URL"]
 
 # Flask setup
 app = Flask(__name__)
