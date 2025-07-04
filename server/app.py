@@ -11,48 +11,46 @@ import requests
 # Load environment variables
 config = dotenv_values(".env")
 DATABASE_URL = config["DATABASE_URL"]
-GROK_API_URL = config["GROK_API_URL"]
-GROK_API_KEY = config["GROK_API_KEY"]
+GEMINI_API_KEY = config["GEMINI_API_KEY"]
+
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
 
 # Flask setup
 app = Flask(__name__)
 CORS(app)
 
+# Database connection function
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
+# Common skills list
 COMMON_SKILLS = [
     # Programming Languages
     "python", "java", "javascript", "c++", "c#", "ruby", "php", "swift", "kotlin", "go", "rust", "typescript",
     "scala", "perl", "r", "matlab", "bash", "powershell", "vba", "objective-c", "dart", "assembly", "fortran",
-
     # Web Development
-    "html", "css","html5","css3", "react", "angular", "vue", "node.js", "express", "django", "flask", "bootstrap", "jquery",
-    "sass", "less", "webpack", "gatsby", "next.js", "nuxt.js", "tailwind", "graphql", "rest api", "soap",
-
+    "html", "css", "html5", "css3", "react", "angular", "vue", "node.js", "express", "django", "flask",
+    "bootstrap", "jquery", "sass", "less", "webpack", "gatsby", "next.js", "nuxt.js", "tailwind", "graphql",
+    "rest api", "soap",
     # Database
     "sql", "mysql", "mongodb", "postgresql", "oracle", "nosql", "redis", "elasticsearch", "firebase",
     "dynamodb", "cassandra", "mariadb", "sqlite", "neo4j", "couchdb", "ms sql server",
-
     # DevOps & Cloud
     "docker", "kubernetes", "aws", "azure", "gcp", "jenkins", "git", "ci/cd", "terraform", "ansible",
     "linux", "unix", "github", "bitbucket", "gitlab", "circleci", "travis ci", "heroku", "nginx", "apache",
-
     # AI/ML
     "machine learning", "deep learning", "tensorflow", "pytorch", "scikit-learn", "nlp", "computer vision",
     "data science", "pandas", "numpy", "keras", "opencv", "data mining", "neural networks", "ai",
-
     # Mobile Development
     "android", "ios", "react native", "flutter", "xamarin", "ionic", "swift ui", "kotlin multiplatform",
-
     # Tools & Software
     "microsoft office", "excel", "powerpoint", "word", "outlook", "jira", "confluence", "trello",
     "slack", "photoshop", "illustrator", "figma", "sketch", "adobe xd", "tableau", "power bi",
-
     # Soft Skills
     "leadership", "communication", "teamwork", "problem solving", "critical thinking", "time management",
     "project management", "agile", "scrum", "kanban", "lean", "six sigma", "customer service"
 ]
+
 # 📌 Extract skills from PDF
 @app.route('/extract_skills', methods=['POST'])
 def extract_skills():
@@ -66,10 +64,7 @@ def extract_skills():
         return jsonify({"error": "Invalid file type. Only PDF allowed.", "success": False}), 400
 
     try:
-        # Read PDF bytes
         pdf_bytes = pdf_file.read()
-
-        # Extract text with pdfplumber
         text = ""
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             for page in pdf.pages:
@@ -79,18 +74,15 @@ def extract_skills():
 
         text_lower = text.lower()
 
-        # Match common skills in text
         matched_skills = [
             skill for skill in COMMON_SKILLS
             if re.search(rf'\b{re.escape(skill.lower())}\b', text_lower)
         ]
 
-        # Convert matched skills to JSON
         skills_json = {
             "matched_common_skills": matched_skills
         }
 
-        # Store into Neon database
         conn = get_db_connection()
         cur = conn.cursor()
 
@@ -114,26 +106,8 @@ def extract_skills():
     except Exception as e:
         print(f"Error processing PDF: {str(e)}")
         return jsonify({"error": f"Failed to process PDF: {str(e)}", "success": False}), 500
-    
-#mock
-@app.route('/mock_grok', methods=['POST'])
-def mock_grok():
-    data = request.get_json()
-    skills = data.get('skills', {}).get('matched_common_skills', [])
-    position = data.get('position')
 
-    # Simulate matching: pick skills arbitrarily for demo
-    matched_skills = [skill for skill in skills if skill in [
-        "python", "django", "sql", "aws", "react", "docker"
-    ]]
-
-    return jsonify({
-        "matched_skills": matched_skills,
-        "position": position,
-        "note": "This is a mock Grok response."
-    })
-
-# 📌 Analyze skills via Grok API for a given job position
+# 📌 Analyze skills via Gemini API for a given job position
 @app.route('/analyze_skills', methods=['POST'])
 def analyze_skills():
     data = request.get_json()
@@ -155,42 +129,56 @@ def analyze_skills():
 
         skills_list = result[0]
 
-        # Send skills to Grok API
-        headers = {
-            'Authorization': f'Bearer {GROK_API_KEY}',
-            'Content-Type': 'application/json'
-        }
-        payload = {
-            "skills": skills_list,
-            "position": position
-        }
-        grok_response = requests.post(GROK_API_URL, headers=headers, json=payload)
-
-        if grok_response.status_code != 200:
-            return jsonify({"error": "Failed to connect to Grok API", "success": False}), 502
-
-        grok_data = grok_response.json()
-
-        # Calculate matching percentage (based on matched count)
-        matched_skills = grok_data.get("matched_skills", [])
-        total_skills = len(skills_list)
-        match_percentage = (len(matched_skills) / total_skills) * 100 if total_skills else 0
-
-        # Decide recommendation
-        if match_percentage >= 70:
-            recommendation = "Highly Recommended"
-        elif match_percentage >= 40:
-            recommendation = "Recommended"
-        else:
-            recommendation = "Not Recommended"
-
-        # Save analysis result
-        cur.execute(
-            "INSERT INTO analyzed_skills (pdf_name, position, matching_percentage, grok_result, recommendation) VALUES (%s, %s, %s, %s, %s)",
-            (pdf_name, position, match_percentage, json.dumps(grok_data), recommendation)
+        prompt_text = (
+            f"Given the following extracted skills from a candidate's resume: {skills_list}, "
+            f"and the job position being applied for is: '{position}', "
+            "please do the following:\n"
+            "- Calculate the matching percentage based on relevance.\n"
+            "- Identify the job position suitability (like 'Highly Suitable', 'Moderately Suitable', 'Low Suitable').\n"
+            "- Provide a brief analysis paragraph.\n"
+            "- Provide a final recommendation as 'High', 'Moderate', or 'Low'.\n\n"
+            "Return the response as JSON in the following format:\n"
+            "{\n"
+            "  'matching_percentage': <number>,\n"
+            "  'position_suitability': '<string>',\n"
+            "  'gemini_analysis': '<string>',\n"
+            "  'recommendation': '<High/Moderate/Low>'\n"
+            "}"
         )
-        conn.commit()
 
+        payload = {
+            "contents": [
+                {
+                    "parts": [{"text": prompt_text}]
+                }
+            ]
+        }
+
+        headers = {'Content-Type': 'application/json'}
+
+        response = requests.post(GEMINI_API_URL, headers=headers, json=payload)
+
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to connect to Gemini API", "success": False}), 502
+
+        gemini_result_raw = response.json()
+
+        gemini_text = gemini_result_raw['candidates'][0]['content']['parts'][0]['text']
+
+        try:
+            gemini_data = json.loads(gemini_text)
+        except json.JSONDecodeError:
+            return jsonify({"error": "Invalid JSON response format from Gemini", "success": False}), 500
+
+        match_percentage = gemini_data.get("matching_percentage", 0)
+        recommendation = gemini_data.get("recommendation", "Moderate")
+
+        cur.execute("""
+            INSERT INTO analyzed_skills (pdf_name, position, matching_percentage, gemini_result, recommendation)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (pdf_name, position, match_percentage, json.dumps(gemini_data), recommendation))
+
+        conn.commit()
         cur.close()
         conn.close()
 
@@ -199,7 +187,7 @@ def analyze_skills():
             "pdf_name": pdf_name,
             "position": position,
             "matching_percentage": match_percentage,
-            "grok_analysis": grok_data,
+            "gemini_analysis": gemini_data,
             "recommendation": recommendation
         })
 
