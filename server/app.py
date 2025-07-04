@@ -196,9 +196,9 @@ def analyze_skills():
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)
         
         # Debug: Print response details
-        print(f"Response status code: {response.status_code}")
-        print(f"Response headers: {response.headers}")
-        print(f"Response text: {response.text}")
+        # print(f"Response status code: {response.status_code}")
+        # print(f"Response headers: {response.headers}")
+        # print(f"Response text: {response.text}")
         
         if response.status_code != 200:
             cur.close()
