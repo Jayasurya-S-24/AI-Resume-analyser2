@@ -106,8 +106,36 @@ def extract_skills():
         print(f"Error processing PDF: {str(e)}")
         return jsonify({"error": f"Failed to process PDF: {str(e)}", "success": False}), 500
 
+
 # 📌 Analyze skills via Gemini API for a given job position
-# 📌 Analyze skills via Gemini API for a given job position
+# Add this function to test your API configuration
+def test_gemini_api():
+    """Test function to verify Gemini API configuration"""
+    test_payload = {
+        "contents": [
+            {
+                "parts": [{"text": "Hello, respond with 'API is working'"}]
+            }
+        ]
+    }
+    
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    # Use the correct model name
+    base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    api_url = f"{base_url}?key={GEMINI_API_KEY}"
+    
+    try:
+        response = requests.post(api_url, headers=headers, json=test_payload, timeout=30)
+        print(f"Test API Status: {response.status_code}")
+        print(f"Test API Response: {response.text}")
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Test API Error: {str(e)}")
+        return False
+
 @app.route('/analyze_skills', methods=['POST'])
 def analyze_skills():
     data = request.get_json()
@@ -160,13 +188,17 @@ def analyze_skills():
             'Content-Type': 'application/json'
         }
 
-        # Add API key to URL if required by your Gemini API setup
-        api_url = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+        # Use the correct Gemini API URL format with the right model name
+        # Updated to use gemini-1.5-flash which is available in v1beta
+        base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+        api_url = f"{base_url}?key={GEMINI_API_KEY}"
 
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)
         
-        print("Gemini API Status:", response.status_code)
-        print("Gemini API Raw Response:", response.text)
+        # Debug: Print response details
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {response.headers}")
+        print(f"Response text: {response.text}")
         
         if response.status_code != 200:
             cur.close()
@@ -176,6 +208,15 @@ def analyze_skills():
                 "success": False
             }), 502
 
+        # Check if response is empty
+        if not response.text or response.text.strip() == '':
+            cur.close()
+            conn.close()
+            return jsonify({
+                "error": "Empty response from Gemini API", 
+                "success": False
+            }), 500
+
         try:
             gemini_result_raw = response.json()
         except json.JSONDecodeError as e:
@@ -183,6 +224,7 @@ def analyze_skills():
             conn.close()
             return jsonify({
                 "error": f"Invalid JSON response from Gemini API: {str(e)}", 
+                "response_text": response.text[:500],  # First 500 chars for debugging
                 "success": False
             }), 500
 
@@ -192,6 +234,7 @@ def analyze_skills():
             conn.close()
             return jsonify({
                 "error": "Unexpected response structure from Gemini API", 
+                "response": gemini_result_raw,
                 "success": False
             }), 500
 
@@ -203,6 +246,7 @@ def analyze_skills():
             conn.close()
             return jsonify({
                 "error": f"Failed to extract text from Gemini response: {str(e)}", 
+                "response": gemini_result_raw,
                 "success": False
             }), 500
 
@@ -221,7 +265,8 @@ def analyze_skills():
             cur.close()
             conn.close()
             return jsonify({
-                "error": f"Invalid JSON format in Gemini response: {str(e)}\nResponse: {gemini_text}", 
+                "error": f"Invalid JSON format in Gemini response: {str(e)}", 
+                "gemini_text": gemini_text,
                 "success": False
             }), 500
 
